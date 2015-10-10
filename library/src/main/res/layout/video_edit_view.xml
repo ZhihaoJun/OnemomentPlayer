@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <co.yishun.library.SquareLayout
+            android:id="@+id/om_video_frame_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/om_video_frame"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </co.yishun.library.SquareLayout>
+
+        <TextView
+            android:id="@+id/om_tag_edit_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/om_video_frame_container"/>
+    </RelativeLayout>
+</merge>

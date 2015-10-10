@@ -3,19 +3,19 @@ package co.yishun.library;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -24,26 +24,30 @@ import java.util.List;
 import co.yishun.library.resource.VideoResource;
 import co.yishun.library.tag.VideoTag;
 
- /**
+/**
  * OnemomentPlayerView
  * @author ZhihaoJun
  */
 public class OnemomentPlayerView extends RelativeLayout
          implements SurfaceHolder.Callback, MediaPlayer.OnErrorListener,
-         MediaPlayer.OnCompletionListener, VideoTagsContainer.OnMeasuredListener {
+         MediaPlayer.OnCompletionListener, VideoSquareContainer.OnMeasuredListener, View.OnTouchListener {
     public final static String VIDEO_TAG_VIEW_TAG = "video_tag";
 
     private SurfaceHolder mVideoSurfaceHolder;
     private SurfaceView mVideo;
     private ImageView mPlayBtn;
-    private VideoTagsContainer mTagsContainer;
-    private LinearLayout mHeadsContainer;
+    private RelativeLayout mTagsContainer;
+    private VideoSquareContainer mVideoContainer;
+    private LinearLayout mAvatarContainer;
     private List<VideoResource> mVideoResources = new LinkedList<VideoResource>();
     private MediaPlayer mActiveMediaPlayer;
     private int mVideoIndex = 0;
     private boolean mShowPlayBtn = true;
     private boolean mAutoplay = false;
     private boolean mShowTags = true;
+    private boolean mEditMode = false;
+    private int mLastX = 0;
+    private int mLastY = 0;
 
     public OnemomentPlayerView(Context context) {
         super(context);
@@ -84,24 +88,53 @@ public class OnemomentPlayerView extends RelativeLayout
         // get views
         mVideo = (SurfaceView) findViewById(R.id.om_video_surface);
         mPlayBtn = (ImageView) findViewById(R.id.om_play_btn);
-        mTagsContainer = (VideoTagsContainer) findViewById(R.id.om_tags_container);
-        mHeadsContainer = (LinearLayout) findViewById(R.id.om_heads_container);
+        mTagsContainer = (RelativeLayout) findViewById(R.id.om_tags_container);
+        mVideoContainer = (VideoSquareContainer) findViewById(R.id.om_video_container);
+        mAvatarContainer = (LinearLayout) findViewById(R.id.om_heads_container);
+
+        AvatarView av = new AvatarView(getContext());
+        try {
+            av.setImage(Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.avatar_test));
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("[OPV]", "set image from uri failed", e);
+        }
+        mAvatarContainer.addView(av);
+
+        av = new AvatarView(getContext());
+        av.setPlaying(true);
+        try {
+            av.setImage(Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.avatar_test));
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("[OPV]", "set image from uri failed", e);
+        }
+        mAvatarContainer.addView(av);
+
+        av = new AvatarView(getContext());
+        try {
+            av.setImage(Uri.parse("android.resource://" + context.getPackageName() + "/" + R.drawable.avatar_test));
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("[OPV]", "set image from uri failed", e);
+        }
+        mAvatarContainer.addView(av);
 
         // add listeners
-        mTagsContainer.setOnMeasuredListener(this);
+        mVideoContainer.setOnMeasuredListener(this);
         mVideoSurfaceHolder = mVideo.getHolder();
         mVideoSurfaceHolder.addCallback(this);
         mActiveMediaPlayer.setOnCompletionListener(this);
     }
 
     private void addTag(VideoTag tag) {
-        TextView v = new TextView(getContext());
+        VideoTagView v = new VideoTagView(getContext());
         v.setTag(VIDEO_TAG_VIEW_TAG);
-        v.setText(tag.getText());
+        v.setVideoTag(tag);
 
         // position
-        int left = (int)(tag.getX()*mTagsContainer.getSize());
-        int top = (int)(tag.getY()*mTagsContainer.getSize());
+        int left = (int)(tag.getX()*mVideoContainer.getSize());
+        int top = (int)(tag.getY()*mVideoContainer.getSize());
 
         Log.i("[OPV]", "add tag at (" + left + "," + top + ")");
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
@@ -109,6 +142,10 @@ public class OnemomentPlayerView extends RelativeLayout
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMargins(left, top, 0, 0);
         v.setLayoutParams(params);
+        v.setOnTouchListener(this);
+        if (mEditMode) {
+            v.setEditMode(true);
+        }
         mTagsContainer.addView(v);
     }
 
@@ -117,6 +154,7 @@ public class OnemomentPlayerView extends RelativeLayout
     }
 
     public void start() {
+        if (mEditMode) return;
         if (!mActiveMediaPlayer.isPlaying()) {
             mActiveMediaPlayer.start();
         }
@@ -126,6 +164,7 @@ public class OnemomentPlayerView extends RelativeLayout
     }
 
     public void pause() {
+        if (mEditMode) return;
         if (mActiveMediaPlayer.isPlaying()) {
             mActiveMediaPlayer.pause();
         }
@@ -155,25 +194,30 @@ public class OnemomentPlayerView extends RelativeLayout
 
         Log.i("[OPV]", "video " + index + " has tags");
 
-        for (int i=0; i<tags.size(); i++) {
-            VideoTag vtag = tags.get(i);
-            addTag(vtag);
+        for (VideoTag tag: tags) {
+            addTag(tag);
         }
     }
 
     private void clearTags() {
         int childCount = mTagsContainer.getChildCount();
+        Log.i("[OPV]", "child view count: " + childCount);
         for (int i=0; i<childCount; i++) {
             View v = mTagsContainer.getChildAt(i);
-            Object tag = v.getTag();
-            if (tag != null && tag.equals(VIDEO_TAG_VIEW_TAG)) {
-                mTagsContainer.removeViewAt(i);
+            if (v != null) {
+                Object tag = v.getTag();
+                if (tag != null && tag.equals(VIDEO_TAG_VIEW_TAG)) {
+                    mTagsContainer.removeViewAt(i);
+                }
+            } else {
+                Log.w("[OPV]", "child view is null at " + i);
             }
         }
     }
 
     public void setShowPlayBtn(boolean mShowPlayBtn) {
         this.mShowPlayBtn = mShowPlayBtn;
+        mPlayBtn.setVisibility(View.INVISIBLE);
         invalidate();
         requestLayout();
     }
@@ -226,6 +270,7 @@ public class OnemomentPlayerView extends RelativeLayout
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
         Log.i("[OPV]", "mp complete");
+        if (mEditMode) return;
         if (mVideoIndex < mVideoResources.size() - 1) {
             mVideoIndex ++;
         } else {
@@ -263,8 +308,53 @@ public class OnemomentPlayerView extends RelativeLayout
         mVideo.setOnTouchListener(listener);
     }
 
+    public void setEditMode(boolean inEditMode) {
+        mEditMode = inEditMode;
+        if (mEditMode) {
+            setShowPlayBtn(false);
+        }
+    }
+
+    public boolean isEditMode() {
+        return mEditMode;
+    }
+
     @Override
     public void onMeasured(int width, int height) {
         showTags(mVideoIndex);
+    }
+
+    @Override
+    public boolean onTouch(View view, MotionEvent motionEvent) {
+        if (!mEditMode) return false;
+        if (view.getTag().equals(OnemomentPlayerView.VIDEO_TAG_VIEW_TAG)) {
+            int action = motionEvent.getAction();
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    Log.i("[OPV]", "touch down " + view);
+                    mLastX = (int)motionEvent.getRawX();
+                    mLastY = (int)motionEvent.getRawY();
+                    Log.i("[OPV]", "last " + mLastX + "," + mLastY);
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    Log.i("[OPV]", "touch move " + view);
+                    int dx = (int)motionEvent.getRawX() - mLastX;
+                    int dy = (int)motionEvent.getRawY() - mLastY;
+                    int left = view.getLeft() + dx;
+                    int top = view.getTop() + dy;
+                    int right = view.getRight() + dx;
+                    int bottom = view.getBottom() + dy;
+                    Log.i("[OPV]", "new position: " + left + "," + top + "," + right + "," + bottom);
+                    view.layout(left, top, right, bottom);
+
+                    mLastX = (int)motionEvent.getRawX();
+                    mLastY = (int)motionEvent.getRawY();
+                    break;
+                case MotionEvent.ACTION_UP:
+                    Log.i("[OPV]", "touch up " + view);
+                    break;
+            }
+        }
+        return true;
     }
 }

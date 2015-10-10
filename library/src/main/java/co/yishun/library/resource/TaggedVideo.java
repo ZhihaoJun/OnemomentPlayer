@@ -1,7 +1,9 @@
 package co.yishun.library.resource;
 
 import android.net.Uri;
+import android.util.Log;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import co.yishun.library.tag.VideoTag;
@@ -16,6 +18,20 @@ public class TaggedVideo implements VideoResource {
     public TaggedVideo(VideoResource videoResource, List<VideoTag> tags) {
         mVideoResource = videoResource;
         mTags = tags;
+    }
+
+    public TaggedVideo(VideoResource videoResource) {
+        mVideoResource = videoResource;
+        mTags = new LinkedList<VideoTag>();
+    }
+
+    public TaggedVideo addTag(VideoTag tag) {
+        if (mTags != null) {
+            mTags.add(tag);
+        } else {
+            Log.w("[TaggedVideo]", "tags list is null");
+        }
+        return this;
     }
 
     @Override

@@ -6,26 +6,22 @@ import android.util.Log;
 import android.widget.FrameLayout;
 
 /**
- * Created by jay on 10/4/15.
+ * Created by jay on 10/10/15.
  */
-public class VideoTagsContainer extends FrameLayout {
+public class SquareLayout extends FrameLayout {
     private int mSize;
     private OnMeasuredListener mOnMeasuredListener;
 
-    public VideoTagsContainer(Context context) {
+    public SquareLayout(Context context) {
         super(context);
     }
 
-    public VideoTagsContainer(Context context, AttributeSet attrs) {
+    public SquareLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
-    public VideoTagsContainer(Context context, AttributeSet attrs, int defStyle) {
+    public SquareLayout(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-    }
-
-    public int getSize() {
-        return mSize;
     }
 
     @Override
@@ -60,6 +56,7 @@ public class VideoTagsContainer extends FrameLayout {
     }
 
     public interface OnMeasuredListener {
-        public void onMeasured(int width, int height);
+        void onMeasured(int width, int height);
     }
+
 }

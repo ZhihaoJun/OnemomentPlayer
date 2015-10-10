@@ -31,17 +31,25 @@ public class MainActivity extends Activity implements View.OnTouchListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         playerView = (OnemomentPlayerView) findViewById(R.id.video);
+        playerView.setEditMode(true);
         playerView.setOnTouchListener(this);
 
         VideoResource vr1 = new ResVideo(new BaseVideoResource(), this, R.raw.v1);
-        List<VideoTag> tags = new LinkedList<VideoTag>();
-        tags.add(new BaseVideoTag("nihao", 0.5f, 0.5f));
-        vr1 = new TaggedVideo(vr1, tags);
+        TaggedVideo tv1 = new TaggedVideo(vr1);
+        tv1.addTag(new BaseVideoTag("a1", 0.3f, 0.3f));
+//                .addTag(new BaseVideoTag("a2", 0.7f, 0.3f));
+//                .addTag(new BaseVideoTag("a3", 0.3f, 0.7f));
 
-        playerView.addVideoResource(vr1);
+        VideoResource vr4 = new ResVideo(new BaseVideoResource(), this, R.raw.v4);
+        TaggedVideo tv4 = new TaggedVideo(vr4);
+        tv4.addTag(new BaseVideoTag("b1", 0.5f, 0.5f));
+//                .addTag(new BaseVideoTag("b2", 0.7f, 0.7f))
+//                .addTag(new BaseVideoTag("b3", 0.3f, 0.3f));
+
+        playerView.addVideoResource(tv1);
         playerView.addVideoResource(new ResVideo(new BaseVideoResource(), this, R.raw.v2));
         playerView.addVideoResource(new ResVideo(new BaseVideoResource(), this, R.raw.v3));
-        playerView.addVideoResource(new ResVideo(new BaseVideoResource(), this, R.raw.v4));
+        playerView.addVideoResource(tv4);
         playerView.addVideoResource(new ResVideo(new BaseVideoResource(), this, R.raw.v5));
         playerView.addVideoResource(new ResVideo(new BaseVideoResource(), this, R.raw.v6));
 
@@ -51,7 +59,6 @@ public class MainActivity extends Activity implements View.OnTouchListener {
             e.printStackTrace();
         }
     }
-
 
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
